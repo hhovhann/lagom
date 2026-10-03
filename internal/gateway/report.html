@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your AI cost report</title>
+<style>
+:root { --bg:#f5f6f8; --card:#fff; --ink:#11151c; --muted:#5a6473; --line:#e1e5ec; --brand:#1f8a5b; --brand-soft:#e5f5ed; --warn:#b4531a; --chip:#eef1f6; --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.06); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0d1016; --card:#161b24; --ink:#eaeef5; --muted:#9aa5b6; --line:#252d3a; --brand:#3fc088; --brand-soft:#12261d; --warn:#e08a4f; --chip:#202735; --shadow:none; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 -apple-system,system-ui,"Segoe UI",sans-serif; }
+.wrap { max-width:860px; margin:0 auto; padding:18px 16px 56px; }
+nav { display:flex; align-items:center; gap:14px; } .logo { font-weight:750; font-size:18px; letter-spacing:-.02em; } .logo b { color:var(--brand); }
+nav a { margin-left:auto; color:#2563d6; text-decoration:none; font-size:13px; }
+h1 { font-size:clamp(26px,4vw,36px); letter-spacing:-.03em; margin:20px 0 4px; } .lede { color:var(--muted); margin:0 0 18px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 20px; box-shadow:var(--shadow); margin-bottom:16px; }
+.eyebrow { font:600 12px/1 ui-monospace,Menlo,monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+.head { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+.tag { font:600 11px/1 ui-monospace,Menlo,monospace; letter-spacing:.06em; padding:5px 9px; border-radius:6px; background:var(--brand-soft); color:var(--brand); }
+button { font:inherit; font-weight:600; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:8px 14px; border-radius:9px; cursor:pointer; }
+.grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; } @media (max-width:560px) { .grid { grid-template-columns:1fr; } }
+.tile { border:1px solid var(--line); border-radius:12px; padding:12px 14px; background:var(--chip); }
+.tile.g { background:var(--brand-soft); border-color:transparent; }
+.tile .k { font:600 11px/1.2 ui-monospace,Menlo,monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+.tile .v { font-size:30px; font-weight:700; letter-spacing:-.03em; font-variant-numeric:tabular-nums; line-height:1.15; margin-top:4px; } .tile.g .v { color:var(--brand); }
+.tile .s { font-size:12px; color:var(--muted); margin-top:2px; }
+.note { font-size:12px; color:var(--muted); margin:12px 0 0; }
+.score { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; } .score h2 { margin:0; font-size:26px; letter-spacing:-.02em; }
+.bar { height:6px; border-radius:4px; background:var(--line); margin:8px 0 6px; overflow:hidden; } .bar i { display:block; height:100%; background:var(--brand); }
+table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; font-size:14px; } th,td { padding:8px 8px; text-align:right; border-bottom:1px solid var(--line); } th:first-child,td:first-child { text-align:left; }
+th { font:600 11px/1.2 ui-monospace,Menlo,monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); } td.g { color:var(--brand); font-weight:700; }
+pre { background:#0d1117; color:#d7e0ee; padding:12px 14px; border-radius:10px; overflow:auto; font-size:13px; }
+svg text { font:11px ui-monospace,Menlo,monospace; fill:var(--muted); }
+.empty { text-align:center; color:var(--muted); padding:40px 10px; }
+@media print { body { background:#fff; } nav a, button, .noprint { display:none !important; } .card { box-shadow:none; break-inside:avoid; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav><span class="logo">La<b>gom</b></span><a href="/">Quality-gate demo</a></nav>
+<h1>Your AI cost report</h1>
+<p class="lede">What your traffic costs today, how much of it ran on a richer model than needed, and what switching on live routing is worth.</p>
+<div id="out"><div class="empty">Loading…</div></div>
+</div>
+<script>
+// Admin token (only when the gateway has auth enabled): open /report#admin=TOKEN. The fragment never leaves the browser.
+const ADMIN = (() => { const h = new URLSearchParams(location.hash.slice(1)); try { if (h.get("admin")) sessionStorage.setItem("lagom_admin", h.get("admin")); } catch (e) {} try { return sessionStorage.getItem("lagom_admin") || ""; } catch (e) { return ""; } })();
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let CUR = "USD";
+// Money: whole units for large amounts, cents for small, and more digits for fractions of a cent (placeholder local prices).
+const fmt = x => { const a = Math.abs(x), max = a >= 100 ? 0 : a >= 0.1 ? 2 : 5; try { return new Intl.NumberFormat("en-US", { style: "currency", currency: CUR, minimumFractionDigits: a >= 0.1 ? undefined : 2, maximumFractionDigits: max }).format(x); } catch (e) { return CUR + " " + x.toFixed(max || 2); } };
+const num = x => Math.round(x).toLocaleString("en-US");
+const pct = x => Math.round(x * 100) + "%";
+const tok = x => x >= 1e9 ? (x / 1e9).toFixed(2) + "B" : x >= 1e6 ? (x / 1e6).toFixed(2) + "M" : x >= 1e3 ? (x / 1e3).toFixed(1) + "K" : String(Math.round(x));
+
+function ring(score) {
+  const r = 36, c = 2 * Math.PI * r, off = c * (1 - score / 100);
+  return `<svg width="92" height="92" viewBox="0 0 92 92" role="img" aria-label="score ${score} of 100"><circle cx="46" cy="46" r="${r}" fill="none" stroke="var(--line)" stroke-width="9"/><circle cx="46" cy="46" r="${r}" fill="none" stroke="var(--brand)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 46 46)"/><text x="46" y="48" text-anchor="middle" style="font:700 22px system-ui;fill:var(--ink)">${score}</text><text x="46" y="63" text-anchor="middle">SCORE</text></svg>`;
+}
+function comp(name, score, measured, text) { return `<div class="tile"><div class="k">${name}</div><div class="v" style="font-size:22px">${score}</div><div class="bar"><i style="width:${score}%"></i></div><div class="s"><b>${measured}</b> ${text}</div></div>`; }
+
+function bars(days) {
+  if (days.length < 1) return "";
+  const W = 700, H = 190, p = 30, max = Math.max(...days.map(d => d.prompts), 1), bw = (W - p) / days.length;
+  const rects = days.map((d, i) => { const h = (d.prompts / max) * (H - 36), hr = (d.rerouted / max) * (H - 36), x = p + i * bw;
+    return `<rect x="${x + 1}" y="${H - 20 - h}" width="${Math.max(2, bw - 3)}" height="${h - hr}" fill="var(--line)"/><rect x="${x + 1}" y="${H - 20 - hr}" width="${Math.max(2, bw - 3)}" height="${hr}" fill="var(--brand)"/>`; }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="daily volume">${rects}<text x="0" y="12">${num(max)}</text><text x="0" y="${H - 20}">0</text><text x="${p}" y="${H - 4}">${esc(days[0].day.slice(5))}</text><text x="${W - 40}" y="${H - 4}">${esc(days[days.length - 1].day.slice(5))}</text></svg>`;
+}
+function line(days) {
+  if (days.length < 2) return `<div class="note">Needs two or more days of traffic.</div>`;
+  let acc = 0; const pts = days.map(d => (acc += d.saved));
+  const W = 700, H = 170, p = 40, max = Math.max(...pts, 0.0001), min = Math.min(0, ...pts);
+  const xy = pts.map((v, i) => [p + (i / (pts.length - 1)) * (W - p - 8), 10 + (1 - (v - min) / (max - min || 1)) * (H - 30)]);
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="cumulative saving"><polyline fill="none" stroke="var(--brand)" stroke-width="2.5" points="${xy.map(a => a.join(",")).join(" ")}"/><text x="0" y="14">${esc(fmt(max))}</text><text x="0" y="${H - 20}">${esc(fmt(min))}</text><text x="${p}" y="${H - 4}">${esc(days[0].day.slice(5))}</text><text x="${W - 40}" y="${H - 4}">${esc(days[days.length - 1].day.slice(5))}</text></svg>`;
+}
+
+function render(v) {
+  CUR = v.currency || "USD";
+  if (!v.prompts) { document.getElementById("out").innerHTML = `<div class="card empty">No optimised traffic observed yet. Send requests with <code>model: "auto"</code> and this report fills in.</div>`; return; }
+  const scale = v.observed_days ? v.window_days / v.observed_days : 1, emptyMonth = v.tokens_rerouted * scale;
+  const q = v.quality_pass >= 0 ? pct(v.quality_pass) : "no checks";
+  const wl = v.workloads.map(w => `<tr><td>${esc(w.name)}</td><td>${num(w.prompts)}</td><td>${pct(w.rerouted_pct)}</td><td>${esc(w.today)}</td><td>${esc(w.routed_to)}</td><td>${esc(fmt(w.baseline))}</td><td>${esc(fmt(w.with_routing))}</td><td class="g">${esc(fmt(w.saved))}</td></tr>`).join("");
+  const md = v.models.map(m => `<tr><td>${esc(m.model)}</td><td>${esc(m.tier || "-")}</td><td>${num(m.prompts)}</td><td>${pct(m.share_pct)}</td><td>${esc(fmt(m.cost))}</td></tr>`).join("");
+  document.getElementById("out").innerHTML = `
+  <div class="card"><div class="head"><span class="tag">OBSERVING · DAY ${v.observed_days} OF ${v.window_days}</span><button class="noprint" onclick="window.print()">Download PDF</button></div>
+    <div class="eyebrow" style="margin-top:14px">A board-ready observation report for your CFO, CTO or CEO.</div>
+    <div class="grid"><div class="tile"><div class="k">baseline / month</div><div class="v">${esc(fmt(v.baseline_month))}</div></div>
+      <div class="tile g"><div class="k">measured saving / month</div><div class="v">${esc(fmt(v.saved_month))}</div></div>
+      <div class="tile g"><div class="k">% saved</div><div class="v">${pct(v.saved_pct)}</div></div>
+      <div class="tile"><div class="k">volume observed</div><div class="v">${num(v.prompts)}</div></div></div>
+    <p class="note">Premium baseline: ${esc(v.baseline)} · observation data scaled to a ${v.window_days}-day month, not an invoice.</p></div>
+
+  <div class="card"><div class="eyebrow">Efficiency score</div>
+    <div class="score"><div><h2>${v.score.total} / 100 · ${esc(v.score.label)}</h2><div class="sub" style="color:var(--muted)">${v.score.label === "Efficient" ? "Well routed: the mix is close to optimal." : v.score.label === "Balanced" ? "Room to trim: some work still runs on richer models than it needs." : "Over-provisioned: most work runs on a richer model than it needs."}</div></div>${ring(v.score.total)}</div>
+    <div class="grid">${comp("COST", v.score.cost, "measured " + pct(v.saved_pct), "Share of the bill routing takes out without changing the work.")}
+      ${comp("QUALITY", v.score.quality, "measured " + q, "Pass rate of rerouted answers against their checks.")}
+      ${comp("FIT", v.score.fit, "measured " + pct(v.rerouted_pct), "Prompts matched to a leaner model that fits the work type.")}
+      ${comp("EFFICIENCY", v.score.efficiency, "measured " + pct(v.score.efficiency / 100), "Tokens that ran on lean models instead of premium spend.")}
+      <div class="tile g"><div class="k">avoidable premium tokens / month</div><div class="v" style="font-size:24px">${tok(emptyMonth)}</div><div class="s">tokens that ran richer than the work required</div></div>
+      <div class="tile g"><div class="k">lower spend / month</div><div class="v" style="font-size:24px">${esc(fmt(v.saved_month))}</div><div class="s">same results, ${pct(v.saved_pct)} less spend</div></div></div>
+    <p class="note">The score weights Cost 35%, Quality 25%, Fit 25% and Efficiency 15%, all measured on this observation window, not a forecast.</p></div>
+
+  <div class="card"><div class="eyebrow">Observed traffic · ${v.observed_days} day${v.observed_days === 1 ? "" : "s"}</div>
+    <div class="grid"><div class="tile"><div class="k">prompts observed</div><div class="v">${num(v.prompts)}</div></div>
+      <div class="tile"><div class="k">rerouted</div><div class="v">${pct(v.rerouted_pct)}</div><div class="s">${num(v.rerouted)} prompts</div></div>
+      <div class="tile"><div class="k">baseline spend</div><div class="v">${esc(fmt(v.baseline_spend))}</div></div>
+      <div class="tile"><div class="k">with routing</div><div class="v">${esc(fmt(v.cost_spend))}</div></div>
+      <div class="tile g"><div class="k">avoidable spend cut</div><div class="v">${esc(fmt(v.saved))}</div><div class="s">${pct(v.saved_pct)} of spend · ${tok(v.tokens_rerouted)} tokens</div></div></div>
+    <p class="note">Pass rate of rerouted answers that had a check: ${q}. Nothing is rerouted below the quality bar.</p></div>
+
+  <div class="card"><div class="eyebrow">Daily volume</div>${bars(v.daily)}<p class="note">Green: rerouted to a leaner model. Grey: kept on the premium model.</p></div>
+  <div class="card"><div class="eyebrow">Cumulative saving</div>${line(v.daily)}</div>
+  <div class="card" style="overflow:auto"><div class="eyebrow">By workload</div><table><tr><th>Workload</th><th>Prompts</th><th>Rerouted</th><th>Today</th><th>Routed to</th><th>Baseline</th><th>With routing</th><th>Saved</th></tr>${wl}</table></div>
+  <div class="card"><div class="eyebrow">By model</div><table><tr><th>Model</th><th>Tier</th><th>Prompts</th><th>Share</th><th>Cost</th></tr>${md}</table></div>
+
+  <div class="card"><div class="eyebrow">Start saving</div><h2 style="margin:0 0 12px;letter-spacing:-.02em">${pct(v.saved_pct)} off your AI model bill: ${esc(fmt(v.saved_month))} a month</h2>
+    <div class="grid"><div class="tile"><div class="k">cost today / month</div><div class="v" style="font-size:24px">${esc(fmt(v.baseline_month))}</div></div>
+      <div class="tile"><div class="k">cost with routing</div><div class="v" style="font-size:24px">${esc(fmt(v.cost_month))}</div></div>
+      <div class="tile"><div class="k">our fee / month</div><div class="v" style="font-size:24px">${esc(fmt(v.fee_month))}</div></div>
+      <div class="tile g"><div class="k">you keep / month</div><div class="v" style="font-size:24px">${esc(fmt(v.keep_month))}</div></div></div>
+    <p class="note">${pct(v.fee_rate)} of what is saved, nothing if nothing is saved. The fee rate is set by the operator in the config; this pilot does not bill anyone.</p>
+    <pre>client = Anthropic(base_url="https://your-gateway")   # or OpenAI(base_url="https://your-gateway/v1")</pre></div>`;
+}
+(async () => {
+  try {
+    const r = await fetch("/v1/report", { headers: ADMIN ? { Authorization: "Bearer " + ADMIN } : {} });
+    if (r.status === 401) { document.getElementById("out").innerHTML = `<div class="card empty">This report needs the admin token: open <code>/report#admin=YOUR_TOKEN</code>.</div>`; return; }
+    render(await r.json());
+  } catch (e) { document.getElementById("out").innerHTML = `<div class="card empty">Could not load the report.</div>`; }
+})();
+</script>
+</body>
+</html>

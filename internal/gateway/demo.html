@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lagom live demo</title>
+<style>
+:root {
+  --bg: #f5f6f8; --card: #fff; --ink: #11151c; --muted: #5a6473; --line: #e1e5ec;
+  --today: #7b8494; --brand: #1f8a5b; --brand-soft: #e5f5ed; --bad: #b4531a; --accent: #2563d6;
+  --chip: #eef1f6; --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1016; --card: #161b24; --ink: #eaeef5; --muted: #9aa5b6; --line: #252d3a;
+    --today: #9aa3b2; --brand: #3fc088; --brand-soft: #12261d; --bad: #e08a4f; --accent: #6b9bff;
+    --chip: #202735; --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, system-ui, "Segoe UI", sans-serif; }
+.wrap { max-width: 1160px; margin: 0 auto; padding: 18px 16px 56px; }
+nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.logo { font-weight: 750; font-size: 18px; letter-spacing: -.02em; }
+.logo b { color: var(--brand); }
+.badge { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--bad); color: var(--bad); }
+nav a { margin-left: auto; color: var(--accent); text-decoration: none; font-size: 13px; }
+h1 { font-size: clamp(26px, 4.4vw, 40px); line-height: 1.1; letter-spacing: -.03em; margin: 22px 0 8px; }
+h1 em { font-style: normal; color: var(--brand); }
+.lede { color: var(--muted); max-width: 760px; margin: 0 0 18px; font-size: 16px; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+button { font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 10px 16px; border-radius: 10px; cursor: pointer; }
+button.primary { background: var(--brand); border-color: var(--brand); color: #fff; box-shadow: var(--shadow); }
+button:disabled { opacity: .5; cursor: default; }
+.status { color: var(--muted); font-size: 13px; }
+.score { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); }
+.tile h3 { margin: 0 0 6px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.num { font-size: 32px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.sub { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.tile.hero { background: var(--brand-soft); border-color: var(--brand); }
+.tile.hero .num { color: var(--brand); font-size: 40px; }
+.pair { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+.pair .l { color: var(--today); } .pair .r { color: var(--brand); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.lane { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); min-height: 120px; }
+.lane h2 { margin: 0 0 2px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.lane .tag { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.rows { display: flex; flex-direction: column; gap: 6px; }
+.row { display: grid; grid-template-columns: 72px 1fr auto; gap: 8px; align-items: center; padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; cursor: pointer; animation: in .35s ease-out; font-size: 13px; }
+.row:hover { border-color: var(--accent); }
+@keyframes in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.type { font-weight: 600; color: var(--muted); font-size: 12px; }
+.chips { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.chip { background: var(--chip); border-radius: 6px; padding: 1px 7px; font-size: 12px; white-space: nowrap; }
+.chip.ok { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+.chip.no { color: var(--bad); text-decoration: line-through; }
+.chip.cache { background: var(--accent); color: #fff; font-weight: 600; }
+.arrow { color: var(--muted); font-size: 11px; }
+.meta { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+.meta b { color: var(--ink); }
+.wrongmark { color: var(--bad); font-weight: 700; }
+.chartcard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.chartcard h2 { margin: 0 0 6px; font-size: 14px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+svg text { fill: var(--muted); font-size: 11px; }
+.why { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 22px 0 14px; }
+.why div { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.why h3 { margin: 0 0 4px; font-size: 15px; }
+.why p { margin: 0; color: var(--muted); font-size: 14px; }
+pre { background: #0f141c; color: #dbe4f3; border-radius: 12px; padding: 14px 16px; overflow: auto; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0; }
+pre .rm { color: #ff8a80; } pre .add { color: #7ee2a8; } pre .cm { color: #7c8aa3; }
+.fine { color: var(--muted); font-size: 12px; margin-top: 10px; max-width: 860px; }
+dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); max-width: 760px; width: calc(100% - 32px); padding: 18px 20px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+dialog::backdrop { background: rgba(0,0,0,.45); }
+dialog h3 { margin: 0 0 8px; }
+dialog .box { background: var(--chip); border-radius: 8px; padding: 8px 10px; margin: 4px 0 10px; white-space: pre-wrap; word-break: break-word; font: 13px/1.5 ui-monospace, Menlo, monospace; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <span class="logo">La<b>gom</b></span>
+    <span id="sim" class="badge" hidden>SIMULATION: mock models, not real savings</span>
+    <a href="/dashboard">Metrics dashboard →</a>
+  </nav>
+
+  <h1>Same tasks. Same quality check.<br><em>A fraction of the bill.</em></h1>
+  <p class="lede">Left: every task goes to the biggest model, which is what most teams do today. Right: Lagom tries a cheap model first, <b>checks the answer</b>, and pays for a bigger model only when the check fails. Repeats cost nothing.</p>
+
+  <div class="controls">
+    <button class="primary" id="run30">▶ Run 30 tasks</button>
+    <button id="run1">Run 1 task</button>
+    <button id="reset">Reset</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  <div class="score">
+    <div class="tile hero"><h3>You saved</h3><div class="num" id="saved">–</div><div class="sub" id="savedsub">run some tasks</div></div>
+    <div class="tile"><h3>Total bill</h3>
+      <div class="pair"><span class="num l" id="costA">$0</span><span class="num r" id="costB">$0</span></div>
+      <div class="sub"><span style="color:var(--today)">today</span> · <span style="color:var(--brand)">with Lagom</span></div></div>
+    <div class="tile"><h3>Cost per correct answer</h3>
+      <div class="pair"><span class="num l" id="cpsA">–</span><span class="num r" id="cpsB">–</span></div>
+      <div class="sub" id="proj">failed tries are counted, nothing hidden</div></div>
+    <div class="tile"><h3>Correct answers</h3>
+      <div class="pair"><span class="num l" id="okA">–</span><span class="num r" id="okB">–</span></div>
+      <div class="sub" id="timeline">checked by the same verifier on both sides</div></div>
+  </div>
+
+  <div class="chartcard"><h2>Running bill: every task adds to both lines</h2><div id="chart"></div></div>
+
+  <div class="grid2">
+    <div class="lane"><h2><span class="dot" style="background:var(--today)"></span>Today: always the biggest model</h2><div class="tag" id="tagA"></div><div class="rows" id="rowsA"></div></div>
+    <div class="lane"><h2><span class="dot" style="background:var(--brand)"></span>With Lagom</h2><div class="tag">cheap first → verify → escalate only if it fails · click a row for details</div><div class="rows" id="rowsB"></div></div>
+  </div>
+
+  <div class="why">
+    <div><h3>Billed on proof</h3><p>Every request records what it cost and what it would have cost on your original model. The saving is measured per request, not estimated in a slide.</p></div>
+    <div><h3>Verified, not hoped</h3><p>A cheaper answer only counts if it passes your check (schema, label, test, judge). If not, it escalates and the failed try is still counted.</p></div>
+    <div><h3>Drop-in</h3><p>OpenAI-compatible with streaming. Works with Anthropic, OpenAI, Gemini and local models (Ollama, vLLM). One line changes.</p></div>
+  </div>
+
+  <pre><span class="cm"># your app, before and after</span>
+<span class="rm">- client = OpenAI(base_url="https://api.openai.com/v1")</span>
+<span class="add">+ client = OpenAI(base_url="https://your-gateway/v1")   # model="auto"</span></pre>
+  <p class="fine" id="fine"></p>
+</div>
+
+<dialog id="dlg"><div id="dlgbody"></div><div style="text-align:right;margin-top:6px"><button onclick="document.getElementById('dlg').close()">Close</button></div></dialog>
+
+<script>
+// Tokens (only needed when the gateway has auth enabled): open /#token=API_TOKEN&admin=ADMIN_TOKEN
+// The fragment is never sent to the server; it is kept in sessionStorage for this tab only.
+const TOK = (() => {
+  const h = new URLSearchParams(location.hash.slice(1));
+  for (const k of ["token", "admin"]) { try { if (h.get(k)) sessionStorage.setItem("lagom_" + k, h.get(k)); } catch (e) {} }
+  const g = k => { try { return sessionStorage.getItem("lagom_" + k) || ""; } catch (e) { return ""; } };
+  return { api: g("token"), admin: g("admin") || g("token") };
+})();
+const authHdr = kind => (TOK[kind] ? { Authorization: "Bearer " + TOK[kind] } : {});
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const short = m => m.replace(/^mock-/, "");
+const usd = n => n === 0 ? "$0" : n < 0.01 ? "$" + n.toFixed(5) : n < 1 ? "$" + n.toFixed(4) : "$" + n.toFixed(2);
+const usdBig = n => "$" + Math.round(n).toLocaleString();
+function blank() { return { cost: 0, ok: 0, n: 0, ms: 0 }; }
+const S = { A: blank(), B: blank(), running: false, baseline: "", simulated: false, pts: [] };
+
+// animated counters
+const shown = {};
+function tween(id, target, fmt) {
+  const el = $(id), from = shown[id] ?? 0, t0 = performance.now();
+  shown[id] = target;
+  const step = now => {
+    const k = Math.min(1, (now - t0) / 450), v = from + (target - from) * (1 - Math.pow(1 - k, 3));
+    el.textContent = fmt(v);
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+async function call(model, run, t) {
+  const t0 = performance.now();
+  const r = await fetch("/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      ...authHdr("api"), "Content-Type": "application/json", "X-Lagom-Run": run, "X-Lagom-Task": t.type, "X-Lagom-Verify": t.verify,
+      "X-Lagom-Mock-Task": t.type, "X-Lagom-Mock-Gold": t.gold, "X-Lagom-Mock-Wrong": t.wrong,
+    },
+    body: JSON.stringify({ model, messages: [{ role: "user", content: t.prompt }] }),
+  });
+  const ms = performance.now() - t0;
+  const j = await r.json();
+  if (!r.ok) throw new Error((j.error && j.error.message) || r.status);
+  return { ms, text: j.choices[0].message.content, lagom: j.lagom };
+}
+
+function chips(path) {
+  return path.map((p, i) => {
+    const cache = p === "cache";
+    const bad = p.endsWith("✗"), good = p.endsWith("✓");
+    const name = cache ? "cache · free" : short(p.replace(/[✓✗!]$/, ""));
+    const cls = cache ? "chip cache" : bad ? "chip no" : good ? "chip ok" : "chip";
+    return (i ? '<span class="arrow">→</span>' : "") + `<span class="${cls}">${esc(name)}${good ? " ✓" : ""}</span>`;
+  }).join("");
+}
+
+function addRow(side, t, res) {
+  const pass = res.lagom.verdict === "pass";
+  const el = document.createElement("div");
+  el.className = "row";
+  const path = res.lagom.path && res.lagom.path.length ? res.lagom.path : [res.lagom.model + (pass ? "✓" : "✗")];
+  el.innerHTML = `<span class="type">${esc(t.type)}</span><span class="chips">${chips(path)}${pass ? "" : '<span class="wrongmark">wrong answer</span>'}</span>
+    <span class="meta"><b>${usd(res.lagom.cost_usd)}</b> · ${res.ms.toFixed(0)} ms</span>`;
+  el.onclick = () => detail(t);
+  const box = $(side === "A" ? "rowsA" : "rowsB");
+  box.prepend(el);
+  while (box.children.length > 9) box.lastChild.remove();
+}
+
+const last = {};
+function detail(t) {
+  const d = last[t.id];
+  if (!d) return;
+  const panel = (title, r) => `<div><h3>${title}</h3>
+    <div class="sub">path: ${esc((r.lagom.path || []).join(" → "))}</div>
+    <div class="box">${esc(r.text)}</div>
+    <div class="sub">${r.lagom.verdict === "pass" ? "✓ passed the check" : "✗ failed the check"} · cost ${usd(r.lagom.cost_usd)} · would have cost ${usd(r.lagom.baseline_usd)} on the baseline model · ${r.ms.toFixed(0)} ms</div></div>`;
+  $("dlgbody").innerHTML = `<h3>${esc(t.type)} task</h3><div class="sub">Prompt</div><div class="box">${esc(t.prompt)}</div>
+    <div class="sub">Check: <code>${esc(t.verify)}</code></div><br><div class="cols">${panel("Today", d.A)}${panel("Lagom", d.B)}</div>`;
+  $("dlg").showModal();
+}
+
+function render() {
+  const { A, B } = S;
+  tween("costA", A.cost, usd); tween("costB", B.cost, usd);
+  const saved = A.cost > 0 ? (A.cost - B.cost) / A.cost * 100 : 0;
+  tween("saved", saved, v => v.toFixed(0) + "%");
+  $("savedsub").textContent = A.n ? `${usd(A.cost - B.cost)} less over ${A.n} task${A.n > 1 ? "s" : ""}` : "run some tasks";
+  const cpsA = A.ok ? A.cost / A.ok : 0, cpsB = B.ok ? B.cost / B.ok : 0;
+  tween("cpsA", cpsA, v => (A.ok ? usd(v) : "–")); tween("cpsB", cpsB, v => (B.ok ? usd(v) : "–"));
+  if (A.ok && B.ok) $("proj").textContent = `per 1M tasks: ${usdBig(cpsA * 1e6)} → ${usdBig(cpsB * 1e6)}${S.simulated ? " (placeholder prices)" : ""}`;
+  $("okA").textContent = A.n ? (A.ok / A.n * 100).toFixed(0) + "%" : "–";
+  $("okB").textContent = B.n ? (B.ok / B.n * 100).toFixed(0) + "%" : "–";
+  if (A.n) $("timeline").textContent = `avg time ${(A.ms / A.n).toFixed(0)} ms → ${(B.ms / B.n).toFixed(0)} ms`;
+  chart();
+}
+
+function chart() {
+  const pts = S.pts;
+  if (pts.length < 2) { $("chart").innerHTML = '<div class="sub" style="padding:18px 0">Run some tasks to see the lines separate.</div>'; return; }
+  const W = 1100, H = 190, L = 56, R = 14, T = 10, B = 24;
+  const maxY = Math.max(...pts.map(p => p.a)) * 1.08 || 1, maxX = pts.length;
+  const x = i => L + (i + 1) / maxX * (W - L - R), y = v => T + (1 - v / maxY) * (H - T - B);
+  const line = (key, col) => `<polyline fill="none" stroke="${col}" stroke-width="3" stroke-linejoin="round" points="${pts.map((p, i) => x(i).toFixed(1) + "," + y(p[key]).toFixed(1)).join(" ")}"/>` +
+    `<circle cx="${x(maxX - 1)}" cy="${y(pts[maxX - 1][key])}" r="4.5" fill="${col}"/>`;
+  let g = "";
+  for (let k = 0; k <= 3; k++) { const v = maxY * k / 3; g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${usd(v)}</text>`; }
+  g += `<text x="${L}" y="${H - 6}">task 1</text><text x="${W - R}" y="${H - 6}" text-anchor="end">task ${maxX}</text>`;
+  g += line("a", "var(--today)") + line("b", "var(--brand)");
+  g += `<text x="${x(maxX - 1) - 8}" y="${y(pts[maxX - 1].a) - 10}" text-anchor="end" style="fill:var(--today);font-weight:600">today</text>`;
+  g += `<text x="${x(maxX - 1) - 8}" y="${y(pts[maxX - 1].b) + 18}" text-anchor="end" style="fill:var(--brand);font-weight:600">Lagom</text>`;
+  $("chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Cumulative cost, today versus Lagom">${g}</svg>`;
+}
+
+async function runTask(t) {
+  const [a, b] = await Promise.all([call(S.baseline, "demo-today", t), call("auto", "demo-lagom", t)]);
+  last[t.id] = { A: a, B: b };
+  for (const [k, r] of [["A", a], ["B", b]]) {
+    const s = S[k]; s.n++; s.cost += r.lagom.cost_usd; s.ms += r.ms; if (r.lagom.verdict === "pass") s.ok++;
+    addRow(k, t, r);
+  }
+  S.pts.push({ a: S.A.cost, b: S.B.cost });
+  render();
+}
+
+async function run(n) {
+  if (S.running) return;
+  S.running = true; $("run30").disabled = $("run1").disabled = true;
+  try {
+    const seed = parseInt(new URLSearchParams(location.search).get("seed") || "0", 10) || Math.floor(Math.random() * 1e6) + 1;
+    const d = await (await fetch(`/v1/demo/tasks?n=${n}&seed=${seed}`, { headers: authHdr("api") })).json();
+    S.baseline = d.baseline; S.simulated = d.simulated;
+    $("sim").hidden = !d.simulated;
+    $("tagA").textContent = `every task → ${d.baseline}`;
+    const queue = d.tasks.slice(); let finished = 0;
+    $("status").textContent = `running ${n} task${n > 1 ? "s" : ""}…`;
+    const worker = async () => {
+      for (let t; (t = queue.shift());) {
+        try { await runTask(t); } catch (e) { $("status").textContent = "error: " + e.message; }
+        $("status").textContent = `${++finished}/${n} done`;
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(5, n) }, worker));
+    $("status").textContent = `finished ${n} task${n > 1 ? "s" : ""}`;
+  } finally { S.running = false; $("run30").disabled = $("run1").disabled = false; }
+}
+
+$("run30").onclick = () => run(30);
+$("run1").onclick = () => run(1);
+$("reset").onclick = async () => {
+  if (S.running) return;
+  await fetch("/v1/admin/reset?scope=all", { method: "POST", headers: authHdr("admin") });
+  S.A = blank(); S.B = blank(); S.pts = [];
+  for (const k of Object.keys(shown)) delete shown[k];
+  $("rowsA").innerHTML = $("rowsB").innerHTML = "";
+  for (const id of ["costA", "costB"]) $(id).textContent = "$0";
+  for (const id of ["saved", "cpsA", "cpsB", "okA", "okB"]) $(id).textContent = "–";
+  $("savedsub").textContent = "run some tasks"; $("status").textContent = "";
+  $("proj").textContent = "failed tries are counted, nothing hidden"; $("timeline").textContent = "checked by the same verifier on both sides";
+  chart();
+};
+(async () => {
+  chart();
+  try {
+    const d = await (await fetch("/v1/demo/tasks?n=1", { headers: authHdr("api") })).json();
+    S.baseline = d.baseline; S.simulated = d.simulated; $("sim").hidden = !d.simulated;
+    $("tagA").textContent = `every task → ${d.baseline}`;
+    $("fine").textContent = d.simulated
+      ? "Simulation: the models here are a built-in mock server and prices are placeholders, so this shows how the system behaves, not what your bill will be. Run it against real models to measure real savings."
+      : "Live models. Costs are computed from token usage and the configured price table.";
+    // hands-free mode for screen recording: http://localhost:8080/?autorun=30
+    const n = parseInt(new URLSearchParams(location.search).get("autorun") || "0", 10);
+    if (n > 0) setTimeout(() => run(Math.min(n, 200)), 1500);
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>

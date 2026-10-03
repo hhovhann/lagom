@@ -1,0 +1,152 @@
+{
+ "results": [
+  {
+   "model": "qwen-fast",
+   "task": "classify",
+   "n": 61,
+   "pass": 61,
+   "errors": 0,
+   "rate": 1.0,
+   "lower": 0.9407540837980556,
+   "mean_cost_usd": 7.650819672131152e-06,
+   "mean_lat_ms": 863.1746427377052
+  },
+  {
+   "model": "qwen-think",
+   "task": "classify",
+   "n": 63,
+   "pass": 63,
+   "errors": 7,
+   "rate": 1.0,
+   "lower": 0.9425268096514744,
+   "mean_cost_usd": 4.2861904761904755e-05,
+   "mean_lat_ms": 9887.059167968251
+  },
+  {
+   "model": "qwen-fast",
+   "task": "extract",
+   "n": 32,
+   "pass": 32,
+   "errors": 0,
+   "rate": 1.0,
+   "lower": 0.8928172849426365,
+   "mean_cost_usd": 2.0165625000000004e-05,
+   "mean_lat_ms": 2645.99597784375
+  },
+  {
+   "model": "qwen-think",
+   "task": "extract",
+   "n": 32,
+   "pass": 32,
+   "errors": 7,
+   "rate": 1.0,
+   "lower": 0.8928172849426365,
+   "mean_cost_usd": 0.00010904374999999999,
+   "mean_lat_ms": 23440.471153687497
+  },
+  {
+   "model": "qwen-fast",
+   "task": "faq",
+   "n": 19,
+   "pass": 15,
+   "errors": 0,
+   "rate": 0.7894736842105263,
+   "lower": 0.5666528575973391,
+   "mean_cost_usd": 4.094736842105262e-06,
+   "mean_lat_ms": 771.8785108947368
+  },
+  {
+   "model": "qwen-think",
+   "task": "faq",
+   "n": 19,
+   "pass": 14,
+   "errors": 3,
+   "rate": 0.7368421052631579,
+   "lower": 0.5120803155892935,
+   "mean_cost_usd": 4.479473684210527e-05,
+   "mean_lat_ms": 12574.12318426316
+  },
+  {
+   "model": "qwen-fast",
+   "task": "grounded",
+   "n": 26,
+   "pass": 26,
+   "errors": 0,
+   "rate": 1.0,
+   "lower": 0.8712669561953783,
+   "mean_cost_usd": 7.915384615384617e-06,
+   "mean_lat_ms": 1045.5995656538462
+  },
+  {
+   "model": "qwen-think",
+   "task": "grounded",
+   "n": 30,
+   "pass": 30,
+   "errors": 2,
+   "rate": 1.0,
+   "lower": 0.886482908609522,
+   "mean_cost_usd": 3.240333333333334e-05,
+   "mean_lat_ms": 8049.450580533335
+  },
+  {
+   "model": "qwen-fast",
+   "task": "reason",
+   "n": 30,
+   "pass": 13,
+   "errors": 0,
+   "rate": 0.43333333333333335,
+   "lower": 0.27377237430615114,
+   "mean_cost_usd": 1.1143333333333336e-05,
+   "mean_lat_ms": 1814.2943012666663
+  },
+  {
+   "model": "qwen-think",
+   "task": "reason",
+   "n": 32,
+   "pass": 32,
+   "errors": 2,
+   "rate": 1.0,
+   "lower": 0.8928172849426365,
+   "mean_cost_usd": 0.0001599,
+   "mean_lat_ms": 37793.05404693751
+  },
+  {
+   "model": "qwen-fast",
+   "task": "summary",
+   "n": 32,
+   "pass": 32,
+   "errors": 0,
+   "rate": 1.0,
+   "lower": 0.8928172849426365,
+   "mean_cost_usd": 9.725000000000006e-06,
+   "mean_lat_ms": 1398.7243072812503
+  },
+  {
+   "model": "qwen-think",
+   "task": "summary",
+   "n": 39,
+   "pass": 39,
+   "errors": 1,
+   "rate": 1.0,
+   "lower": 0.910330146399761,
+   "mean_cost_usd": 5.5858974358974376e-05,
+   "mean_lat_ms": 13135.169147384617
+  }
+ ],
+ "models": [
+  {
+   "id": "qwen-fast",
+   "in_per_mtok": 0.1,
+   "label": "small",
+   "out_per_mtok": 0.2
+  },
+  {
+   "id": "qwen-think",
+   "in_per_mtok": 0.1,
+   "label": "premium",
+   "out_per_mtok": 0.2
+  }
+ ],
+ "spent": 0,
+ "cap": 0
+}

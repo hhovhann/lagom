@@ -1,0 +1,171 @@
+{
+  "listen": "127.0.0.1:8080",
+  "ledger_path": "data/ledger-real.jsonl",
+  "budget_usd": 3.0,
+  "auth_token_env": "LAGOM_API_KEY",
+  "admin_token_env": "LAGOM_ADMIN_KEY",
+  "guard": "flag",
+  "providers": {
+    "anthropic": {
+      "type": "anthropic",
+      "base_url": "https://api.anthropic.com",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "default_max_token": 1024
+    }
+  },
+  "models": [
+    {
+      "id": "claude-haiku",
+      "provider": "anthropic",
+      "upstream": "claude-haiku-4-5",
+      "in_per_mtok": 1.0,
+      "out_per_mtok": 5.0,
+      "price_verified": true,
+      "prior_latency_ms": 900,
+      "max_tokens": 512
+    },
+    {
+      "id": "claude-sonnet",
+      "provider": "anthropic",
+      "upstream": "claude-sonnet-5-5",
+      "in_per_mtok": 2.0,
+      "out_per_mtok": 10.0,
+      "price_verified": true,
+      "prior_latency_ms": 1500,
+      "effort": "low",
+      "max_tokens": 2048
+    },
+    {
+      "id": "claude-opus",
+      "provider": "anthropic",
+      "upstream": "claude-opus-5-5",
+      "in_per_mtok": 4.0,
+      "out_per_mtok": 20.0,
+      "price_verified": true,
+      "prior_latency_ms": 2500,
+      "max_tokens": 2048
+    }
+  ],
+  "chain": [
+    "claude-haiku",
+    "claude-sonnet",
+    "claude-opus"
+  ],
+  "baseline_model": "claude-opus",
+  "judge_model": "claude-haiku",
+  "router": {
+    "max_attempts": 4,
+    "fail_penalty_usd": 0.05,
+    "latency_usd_per_sec": 0.0005,
+    "attempt_timeout_ms": 90000
+  },
+  "cache": {
+    "enabled": true,
+    "max_entries": 20000,
+    "ttl_sec": 3600
+  },
+  "demo": {
+    "session_cap_usd": 0.5,
+    "providers": {
+      "anthropic": {
+        "label": "Anthropic",
+        "type": "anthropic",
+        "base_url": "https://api.anthropic.com",
+        "key_required": true,
+        "tiers": [
+          {
+            "label": "small",
+            "id": "claude-haiku-4-5",
+            "upstream": "claude-haiku-4-5",
+            "in_per_mtok": 1.0,
+            "out_per_mtok": 5.0,
+            "max_tokens": 512
+          },
+          {
+            "label": "mid",
+            "id": "claude-sonnet-5-5",
+            "upstream": "claude-sonnet-5-5",
+            "in_per_mtok": 2.0,
+            "out_per_mtok": 10.0,
+            "effort": "low",
+            "max_tokens": 2048
+          },
+          {
+            "label": "premium",
+            "id": "claude-opus-5-5",
+            "upstream": "claude-opus-5-5",
+            "in_per_mtok": 4.0,
+            "out_per_mtok": 20.0,
+            "effort": "low",
+            "max_tokens": 2048
+          }
+        ]
+      },
+      "openai": {
+        "label": "OpenAI",
+        "type": "openai",
+        "base_url": "https://api.openai.com/v1",
+        "max_tokens_field": "max_completion_tokens",
+        "key_required": true,
+        "tiers": [
+          {
+            "label": "small",
+            "id": "gpt-5.6-luna",
+            "upstream": "gpt-5.6-luna",
+            "in_per_mtok": 0.2,
+            "out_per_mtok": 1.2,
+            "max_tokens": 512
+          },
+          {
+            "label": "mid",
+            "id": "gpt-5.6-terra",
+            "upstream": "gpt-5.6-terra",
+            "in_per_mtok": 2.0,
+            "out_per_mtok": 12.0,
+            "max_tokens": 2048
+          },
+          {
+            "label": "premium",
+            "id": "gpt-5.6-sol",
+            "upstream": "gpt-5.6-sol",
+            "in_per_mtok": 5.0,
+            "out_per_mtok": 30.0,
+            "max_tokens": 2048
+          }
+        ]
+      },
+      "gemini": {
+        "label": "Google Gemini",
+        "type": "openai",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "key_required": true,
+        "tiers": [
+          {
+            "label": "small",
+            "id": "gemini-3.5-flash-lite",
+            "upstream": "gemini-3.5-flash-lite",
+            "in_per_mtok": 0.3,
+            "out_per_mtok": 2.5,
+            "max_tokens": 512
+          },
+          {
+            "label": "mid",
+            "id": "gemini-3.7-flash",
+            "upstream": "gemini-3.7-flash",
+            "in_per_mtok": 0.75,
+            "out_per_mtok": 3.75,
+            "max_tokens": 2048
+          },
+          {
+            "label": "premium",
+            "id": "gemini-3.1-pro-preview",
+            "upstream": "gemini-3.1-pro-preview",
+            "in_per_mtok": 2.0,
+            "out_per_mtok": 12.0,
+            "max_tokens": 2048
+          }
+        ]
+      }
+    }
+  }
+}

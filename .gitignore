@@ -1,0 +1,8 @@
+/lagom
+/data/
+.env
+*.log
+.DS_Store
+.idea/
+eval-report.md
+video/

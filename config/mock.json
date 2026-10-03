@@ -1,0 +1,107 @@
+{
+  "listen": "127.0.0.1:8080",
+  "ledger_path": "data/ledger.jsonl",
+  "providers": {
+    "mock": {
+      "type": "openai",
+      "base_url": "http://127.0.0.1:9100/v1",
+      "forward_meta": true
+    }
+  },
+  "models": [
+    {
+      "id": "mock-local",
+      "provider": "mock",
+      "in_per_mtok": 0.05,
+      "out_per_mtok": 0.1,
+      "private": true,
+      "prior_latency_ms": 400
+    },
+    {
+      "id": "mock-small",
+      "provider": "mock",
+      "in_per_mtok": 1.0,
+      "out_per_mtok": 5.0,
+      "prior_latency_ms": 500
+    },
+    {
+      "id": "mock-medium",
+      "provider": "mock",
+      "in_per_mtok": 2.0,
+      "out_per_mtok": 10.0,
+      "prior_latency_ms": 1200
+    },
+    {
+      "id": "mock-large",
+      "provider": "mock",
+      "in_per_mtok": 4.0,
+      "out_per_mtok": 20.0,
+      "prior_latency_ms": 2500
+    },
+    {
+      "id": "mock-instant",
+      "provider": "mock",
+      "in_per_mtok": 0.0,
+      "out_per_mtok": 0.0
+    }
+  ],
+  "chain": [
+    "mock-local",
+    "mock-small",
+    "mock-medium",
+    "mock-large"
+  ],
+  "baseline_model": "mock-large",
+  "router": {
+    "max_attempts": 4,
+    "fail_penalty_usd": 0.01,
+    "latency_usd_per_sec": 0.0005,
+    "attempt_timeout_ms": 30000
+  },
+  "cache": {
+    "enabled": true,
+    "max_entries": 20000,
+    "ttl_sec": 3600
+  },
+  "classifier": {
+    "provider": "mock",
+    "model": "hash-embed",
+    "min_score": 0.2,
+    "min_margin": 0.03,
+    "examples": {
+      "classify": [
+        "Classify the support ticket into one of these labels: billing, bug, feature request, account access.",
+        "Which category does this customer message belong to? Reply with the label only.",
+        "Label this ticket from a customer about their subscription or login."
+      ],
+      "extract": [
+        "Extract the vendor, invoice number, total and currency from this invoice text as a JSON object.",
+        "Pull these fields out of the document and reply with JSON only.",
+        "Read the invoice below and return the structured data."
+      ],
+      "faq": [
+        "What is the capital of France? Reply with only the answer.",
+        "Answer this general knowledge question in one word.",
+        "Which city is the capital of this country?"
+      ],
+      "reason": [
+        "A team closes tickets each week. After some weeks a few were reopened. How many tickets remain closed? Reply with only the number.",
+        "Calculate the total: how many items remain after these changes?",
+        "Work out the answer to this word problem step by step and give the number.",
+        "A subscription costs a monthly price and the annual plan covers twelve months at a discount. How much does a customer save over a year? Reply with only the number.",
+        "Some engineers each complete a number of tasks per week for a few weeks, then some are reversed. How many remain? Reply with only the number.",
+        "A warehouse ships boxes each day for several days and some are returned. What is the total? Reply with only the number."
+      ],
+      "grounded": [
+        "Answer using only the passage. Passage: some company facts. Question: what is the value asked about?",
+        "Read the text below and answer the question from it only.",
+        "Based on the passage provided, answer the question. Reply with only the answer."
+      ],
+      "summary": [
+        "Summarise this customer message in at most 14 words. You must mention the product name.",
+        "Write a short summary of the customer message under a word limit and do not use a banned word.",
+        "Shorten the customer email into one brief sentence that mentions the product."
+      ]
+    }
+  }
+}

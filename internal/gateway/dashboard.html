@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lagom Demo</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --ink: #14181f; --muted: #5b6573; --line: #e2e6ec;
+  --baseline: #7b8494; --static: #c98a12; --routing: #1f8a5b; --full: #2563d6; --default: #6b5bd6;
+  --m0: #b9e3da; --m1: #7fcabb; --m2: #3fa797; --m3: #176b61; --warn: #b4531a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1218; --card: #171c25; --ink: #e8ecf2; --muted: #98a3b3; --line: #262e3b;
+    --baseline: #9aa3b2; --static: #e0a93a; --routing: #3fbf8a; --full: #5b8def; --default: #8f82ee;
+    --m0: #28524c; --m1: #2f7f73; --m2: #46aa9a; --m3: #86d6c8; --warn: #e08a4f;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, system-ui, "Segoe UI", sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; margin-bottom: 14px; }
+h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.sub { color: var(--muted); }
+.badge { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--warn); color: var(--warn); }
+.grid { display: grid; gap: 14px; }
+.cards { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.two { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); margin-top: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.run-name { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 8px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.big { font-size: 26px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.delta { font-size: 13px; font-weight: 600; margin-left: 6px; }
+.good { color: var(--routing); }
+.row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; color: var(--muted); font-variant-numeric: tabular-nums; }
+.row b { color: var(--ink); font-weight: 600; }
+.bar { height: 8px; border-radius: 4px; background: var(--line); margin: 6px 0 10px; overflow: hidden; }
+.bar > i { display: block; height: 100%; border-radius: 4px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; }
+td.n, th.n { text-align: right; }
+.stack { display: flex; height: 14px; border-radius: 3px; overflow: hidden; background: var(--line); min-width: 120px; }
+.stack i { display: block; height: 100%; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-top: 8px; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; background: var(--c); vertical-align: -1px; }
+.feed { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; max-height: 300px; overflow: auto; }
+.feed div { padding: 2px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.pass { color: var(--routing); } .fail { color: var(--warn); }
+svg text { fill: var(--muted); font-size: 11px; }
+.empty { color: var(--muted); padding: 24px 0; text-align: center; }
+.note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Lagom</h1>
+    <span class="sub">cost per <b>successful</b> task, not tokens</span>
+    <span id="sim" class="badge" hidden>SIMULATION: mock models</span>
+    <span class="sub" id="chain"></span>
+  </header>
+
+  <div class="grid cards" id="cards"><div class="empty">Waiting for traffic. Run <code>bin/eval</code> or send a request.</div></div>
+
+  <div class="grid two">
+    <div class="card"><h2>Cost per successful task, over time</h2><div id="chart"></div><div class="legend" id="chartlegend"></div></div>
+    <div class="card"><h2>Live requests</h2><div class="feed" id="feed"></div></div>
+  </div>
+
+  <div class="grid two">
+    <div class="card"><h2>Where each task type ended up</h2><div id="mix"></div><div class="legend" id="mixlegend"></div></div>
+    <div class="card"><h2>What the router has learned</h2><div id="learner"></div></div>
+  </div>
+
+  <div class="grid two">
+    <div class="card"><h2>Which workloads could move off the frontier model</h2><div id="cands"></div><div class="note">"first-try" means: try the cheaper model first and escalate to the frontier model on failure; cheaper in expectation. "move" means it clears the quality bar on its own.</div></div>
+    <div class="card"><h2>Gateway</h2><div id="gw"></div></div>
+  </div>
+</div>
+<script>
+// Tokens (only needed when the gateway has auth enabled): open /#token=API_TOKEN&admin=ADMIN_TOKEN
+// The fragment is never sent to the server; it is kept in sessionStorage for this tab only.
+const TOK = (() => {
+  const h = new URLSearchParams(location.hash.slice(1));
+  for (const k of ["token", "admin"]) { try { if (h.get(k)) sessionStorage.setItem("lagom_" + k, h.get(k)); } catch (e) {} }
+  const g = k => { try { return sessionStorage.getItem("lagom_" + k) || ""; } catch (e) { return ""; } };
+  return { api: g("token"), admin: g("admin") || g("token") };
+})();
+const authHdr = kind => (TOK[kind] ? { Authorization: "Bearer " + TOK[kind] } : {});
+const LABEL = { baseline: "Always frontier", "demo-today": "Today: always biggest model", static: "Static cascade", routing: "Learned routing", full: "Learned + cache", "demo-lagom": "With lagom" };
+const COLOR = { baseline: "var(--baseline)", "demo-today": "var(--baseline)", static: "var(--static)", routing: "var(--routing)", full: "var(--full)", "demo-lagom": "var(--routing)" };
+const ORDER = ["baseline", "demo-today", "static", "routing", "full", "demo-lagom"];
+const MODEL_COLORS = ["var(--m0)", "var(--m1)", "var(--m2)", "var(--m3)"];
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const usd = n => !n ? "$0" : n < 0.01 ? "$" + n.toFixed(5) : "$" + n.toFixed(4);
+const pct = n => (n * 100).toFixed(1) + "%";
+const ms = n => n >= 1000 ? (n / 1000).toFixed(2) + " s" : n.toFixed(0) + " ms";
+const colorOf = r => COLOR[r] || "var(--default)";
+const labelOf = r => LABEL[r] || r;
+const short = m => m.replace(/^mock-/, "");
+
+function runsSorted(runs) {
+  const names = Object.keys(runs);
+  return names.sort((a, b) => (ORDER.indexOf(a) + 99) % 99 - (ORDER.indexOf(b) + 99) % 99 || a.localeCompare(b));
+}
+
+function renderCards(runs) {
+  const names = runsSorted(runs);
+  if (!names.length) return;
+  const base = runs.baseline || runs["demo-today"];
+  const maxCps = Math.max(...names.map(n => runs[n].cost_per_success_usd || 0), 1e-12);
+  $("cards").innerHTML = names.map(n => {
+    const r = runs[n];
+    let delta = "";
+    if (base && runs[n] !== base && base.cost_per_success_usd > 0 && r.cost_per_success_usd > 0) {
+      const d = (r.cost_per_success_usd - base.cost_per_success_usd) / base.cost_per_success_usd * 100;
+      delta = `<span class="delta ${d < 0 ? "good" : ""}">${d > 0 ? "+" : ""}${d.toFixed(1)}%</span>`;
+    }
+    const w = (r.cost_per_success_usd / maxCps * 100).toFixed(1);
+    return `<div class="card">
+      <div class="run-name"><span class="dot" style="background:${colorOf(n)}"></span>${esc(labelOf(n))}</div>
+      <div class="big">${usd(r.cost_per_success_usd)}${delta}</div>
+      <div class="sub">per successful task</div>
+      <div class="bar"><i style="width:${w}%;background:${colorOf(n)}"></i></div>
+      <div class="row"><span>Tasks</span><b>${r.tasks}</b></div>
+      <div class="row"><span>Success rate</span><b>${pct(r.success_rate)}</b></div>
+      <div class="row"><span>Latency p50 / p95</span><b>${ms(r.lat_p50_ms)} / ${ms(r.lat_p95_ms)}</b></div>
+      <div class="row"><span>Cache hits</span><b>${pct(r.cache_hit_rate)}</b></div>
+      <div class="row"><span>Escalated (of executed)</span><b>${pct(r.escalation_rate)}</b></div>
+      <div class="row"><span>Gateway overhead p50 / p99</span><b>${r.overhead_p50_us.toFixed(0)} / ${r.overhead_p99_us.toFixed(0)} µs</b></div>
+      <div class="row"><span>Ledger-estimated saving</span><b>${usd(r.saved_usd)} (${r.saved_pct.toFixed(0)}%)</b></div>
+    </div>`;
+  }).join("");
+}
+
+function renderChart(runs) {
+  const names = runsSorted(runs).filter(n => (runs[n].series || []).length > 1);
+  if (!names.length) { $("chart").innerHTML = '<div class="empty">Needs a few dozen tasks.</div>'; $("chartlegend").innerHTML = ""; return; }
+  const W = 520, H = 220, L = 70, R = 12, T = 10, B = 26;
+  const maxX = Math.max(...names.map(n => runs[n].series.at(-1).i));
+  const maxY = Math.max(...names.flatMap(n => runs[n].series.map(p => p.cost_per_success))) * 1.1 || 1;
+  const x = v => L + v / maxX * (W - L - R), y = v => T + (1 - v / maxY) * (H - T - B);
+  let g = "";
+  for (let k = 0; k <= 4; k++) {
+    const v = maxY * k / 4;
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${usd(v)}</text>`;
+  }
+  g += `<text x="${L}" y="${H - 6}">0</text><text x="${W - R}" y="${H - 6}" text-anchor="end">${maxX} tasks</text>`;
+  for (const n of names) {
+    const pts = runs[n].series.map(p => `${x(p.i).toFixed(1)},${y(p.cost_per_success).toFixed(1)}`).join(" ");
+    g += `<polyline points="${pts}" fill="none" stroke="${colorOf(n)}" stroke-width="2.2" stroke-linejoin="round"/>`;
+    const last = runs[n].series.at(-1);
+    g += `<circle cx="${x(last.i)}" cy="${y(last.cost_per_success)}" r="3.5" fill="${colorOf(n)}"/>`;
+  }
+  $("chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Cost per successful task by window of tasks">${g}</svg>`;
+  $("chartlegend").innerHTML = names.map(n => `<span style="--c:${colorOf(n)}">${esc(labelOf(n))}</span>`).join("");
+}
+
+function renderMix(runs, chain) {
+  const name = ["full", "routing", "demo-lagom", "static"].find(n => runs[n]) || runsSorted(runs).find(n => n !== "baseline" && n !== "demo-today");
+  if (!name) { $("mix").innerHTML = '<div class="empty">No routed traffic yet.</div>'; return; }
+  const mix = runs[name].mix || {};
+  const tasks = Object.keys(mix).sort();
+  const colorFor = m => MODEL_COLORS[Math.min(chain.indexOf(m), 3)] || "var(--line)";
+  $("mix").innerHTML = `<table><tr><th>Task</th><th>Final model</th><th class="n">Tasks</th></tr>` + tasks.map(t => {
+    const tot = Object.values(mix[t]).reduce((a, b) => a + b, 0);
+    const segs = chain.filter(m => mix[t][m]).map(m => `<i title="${esc(m)}: ${mix[t][m]}" style="width:${mix[t][m] / tot * 100}%;background:${colorFor(m)}"></i>`).join("");
+    return `<tr><td>${esc(t)}</td><td><div class="stack">${segs}</div></td><td class="n">${tot}</td></tr>`;
+  }).join("") + `</table><div class="note">Run shown: ${esc(labelOf(name))}</div>`;
+  $("mixlegend").innerHTML = chain.map((m, i) => `<span style="--c:${MODEL_COLORS[Math.min(i, 3)]}">${esc(short(m))}</span>`).join("");
+}
+
+function renderLearner(learner) {
+  if (!learner || !learner.length) { $("learner").innerHTML = '<div class="empty">Nothing learned yet.</div>'; return; }
+  $("learner").innerHTML = learner.map(t => `
+    <div style="margin-bottom:12px"><b>${esc(t.task)}</b> <span class="sub">(${t.volume} tasks)</span>
+    <table><tr><th>Model</th><th class="n">Tried</th><th class="n">Start</th><th class="n">Pass rate</th><th class="n">$ / attempt</th></tr>` +
+    t.arms.map(a => `<tr><td>${esc(short(a.model))}${a.private ? " ⌂" : ""}</td><td class="n">${a.n}</td><td class="n">${a.starts}</td><td class="n">${a.n ? pct(a.p) : "–"}</td><td class="n">${usd(a.mean_cost)}</td></tr>`).join("") +
+    `</table></div>`).join("") + `<div class="note">⌂ private / open model. Pass rate is the posterior mean; the router samples from it to decide where each task starts.</div>`;
+}
+
+async function renderCands() {
+  try {
+    const c = await (await fetch("/v1/report/candidates", { headers: authHdr("admin") })).json();
+    const rows = (c.candidates || []);
+    if (!rows.length) { $("cands").innerHTML = '<div class="empty">Needs 20+ tasks per type.</div>'; return; }
+    $("cands").innerHTML = `<table><tr><th>Task</th><th>Status</th><th>Model</th><th class="n">Pass (95% low)</th><th class="n">Saving / 1k tasks</th></tr>` +
+      rows.map(r => `<tr><td>${esc(r.task)}</td><td>${esc(r.status)}</td><td>${esc(short(r.model))}${r.private ? " ⌂" : ""}</td><td class="n">${r.status === "keep" ? "–" : pct(r.pass_rate) + " (" + pct(r.pass_lower_95) + ")"}</td><td class="n">${r.status === "keep" ? "–" : "$" + r.savings_per_1k_tasks_usd.toFixed(2)}</td></tr>`).join("") + `</table>`;
+  } catch (e) { /* ignore */ }
+}
+
+function renderFeed(recent) {
+  $("feed").innerHTML = recent.slice().reverse().map(e => {
+    const path = e.cache_hit ? "cache" : e.attempts.map(a => short(a.model) + (a.verdict === "fail" ? "✗" : a.verdict === "error" ? "!" : "")).join(" → ");
+    const v = e.verdict === "pass" ? '<span class="pass">pass</span>' : e.verdict === "fail" ? '<span class="fail">fail</span>' : "n/a";
+    return `<div>${esc(e.run)} · ${esc(e.task)} · ${esc(path)} · ${v} · ${usd(e.cost_usd)} · ${e.latency_ms.toFixed(0)} ms</div>`;
+  }).join("") || '<div class="empty">No requests yet.</div>';
+}
+
+function renderGw(s) {
+  const l = s.ledger;
+  $("gw").innerHTML = `
+    <div class="row"><span>Models in chain</span><b>${s.chain.map(short).join(" → ")}</b></div>
+    <div class="row"><span>Baseline (counterfactual)</span><b>${esc(s.baseline)}</b></div>
+    <div class="row"><span>In flight</span><b>${s.inflight}</b></div>
+    <div class="row"><span>Cache entries</span><b>${s.cache_size}</b></div>
+    <div class="row"><span>Ledger events dropped</span><b>${l.dropped_events}</b></div>
+    <div class="note">Cost per successful task = total spend (every attempt, judge calls included) ÷ tasks that passed their check. Savings are measured against what the final answer would have cost on the baseline model.</div>`;
+}
+
+async function tick() {
+  try {
+    const s = await (await fetch("/v1/stats", { headers: authHdr("admin") })).json();
+    $("sim").hidden = !s.simulated;
+    $("chain").textContent = "";
+    const runs = s.ledger.runs || {};
+    if (Object.keys(runs).length) renderCards(runs);
+    renderChart(runs);
+    renderMix(runs, s.chain);
+    renderLearner(s.learner);
+    renderFeed(s.ledger.recent || []);
+    renderGw(s);
+    renderCands();
+  } catch (e) { /* gateway restarting */ }
+}
+tick(); setInterval(tick, 1000);
+</script>
+</body>
+</html>

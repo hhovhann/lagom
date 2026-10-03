@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lagom: quality gate demo</title>
+<style>
+:root { --bg:#f5f6f8; --card:#fff; --ink:#11151c; --muted:#5a6473; --line:#e1e5ec; --brand:#1f8a5b; --brand-soft:#e5f5ed; --bad:#b4531a; --bad-soft:#fbeee4; --accent:#2563d6; --chip:#eef1f6; --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.06); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0d1016; --card:#161b24; --ink:#eaeef5; --muted:#9aa5b6; --line:#252d3a; --brand:#3fc088; --brand-soft:#12261d; --bad:#e08a4f; --bad-soft:#2a1d12; --accent:#6b9bff; --chip:#202735; --shadow:none; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 -apple-system,system-ui,"Segoe UI",sans-serif; }
+.wrap { max-width:1000px; margin:0 auto; padding:18px 16px 56px; }
+nav { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.logo { font-weight:750; font-size:18px; letter-spacing:-.02em; } .logo b { color:var(--brand); }
+nav a { color:var(--accent); text-decoration:none; font-size:13px; } nav a:first-of-type { margin-left:auto; }
+h1 { font-size:clamp(26px,4.2vw,38px); line-height:1.1; letter-spacing:-.03em; margin:22px 0 6px; } h1 em { font-style:normal; color:var(--brand); }
+.lede { color:var(--muted); margin:0 0 16px; max-width:720px; }
+.steps { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0; }
+.step { font-size:12px; font-weight:600; padding:5px 11px; border-radius:999px; background:var(--chip); color:var(--muted); }
+.step.on { background:var(--brand); color:#fff; } .step.done { background:var(--brand-soft); color:var(--brand); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 20px; box-shadow:var(--shadow); margin-bottom:14px; }
+h2 { margin:0 0 6px; font-size:20px; letter-spacing:-.02em; }
+.sub { color:var(--muted); font-size:13px; }
+button { font:inherit; font-weight:600; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:9px 16px; border-radius:10px; cursor:pointer; }
+button.primary { background:var(--brand); border-color:var(--brand); color:#fff; } button:disabled { opacity:.5; cursor:default; }
+.row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+.opt { display:block; border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin:8px 0; cursor:pointer; }
+.opt.sel { border-color:var(--brand); background:var(--brand-soft); }
+input[type=text],input[type=password],input[type=number],textarea,select { font:inherit; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); width:100%; }
+table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; font-size:14px; }
+th,td { padding:8px 10px; text-align:right; border-bottom:1px solid var(--line); } th:first-child,td:first-child { text-align:left; }
+th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+.pass { color:var(--brand); font-weight:700; } .fail { color:var(--bad); font-weight:700; }
+.pick { background:var(--brand-soft); }
+.tag { display:inline-block; font-size:12px; font-weight:600; padding:2px 9px; border-radius:999px; }
+.tag.ok { background:var(--brand-soft); color:var(--brand); } .tag.keep { background:var(--bad-soft); color:var(--bad); } .tag.more { background:var(--chip); color:var(--muted); }
+.big { font-size:34px; font-weight:700; letter-spacing:-.03em; } .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+.tile { border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+.warn { color:var(--bad); font-size:13px; } pre { background:#0d1117; color:#d7e0ee; padding:12px 14px; border-radius:10px; overflow:auto; font-size:13px; }
+.priv { font-size:12px; color:var(--muted); margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav><span class="logo">La<b>gom</b></span><a href="/race">Live race</a><a href="/dashboard">Metrics</a></nav>
+<h1>Just the right model<br><em>for every task, proven first.</em></h1>
+<p class="lede">Pick your traffic, run it on every model tier, set the quality bar, and see which model is proven good enough for each kind of task. A model is never chosen on price alone.</p>
+<div class="steps" id="steps"></div>
+<div id="view"></div>
+</div>
+<script>
+// Tokens (only when the gateway has auth enabled): open /#token=API_TOKEN. The fragment never leaves the browser.
+const TOK = (() => { const h = new URLSearchParams(location.hash.slice(1)); try { if (h.get("token")) sessionStorage.setItem("lagom_token", h.get("token")); } catch (e) {} try { return sessionStorage.getItem("lagom_token") || ""; } catch (e) { return ""; } })();
+const hdr = () => Object.assign({ "Content-Type": "application/json" }, TOK ? { Authorization: "Bearer " + TOK } : {});
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = x => (x * 100).toFixed(1) + "%";
+const usd = x => "$" + (x >= 1 ? x.toFixed(2) : x.toFixed(5));
+const money = x => "$" + Math.round(x).toLocaleString("en-US");
+const NAMES = ["1 Provider & key", "2 Quality", "3 Volume", "4 Day to day", "5 Our offer"];
+
+// state: key lives only in this variable (tab memory): never stored, never put in a URL.
+const S = { source: "sample", step: 0, cfg: null, provider: "sample", key: "", data: null, bar: 0.9, volume: 100000, perTask: 10, busy: false, msg: "" };
+
+// ---- the decision, mirrors the Go assess.Recommend ----
+function decide(data, bar) {
+  const order = data.models.map(m => m.id), base = order[order.length - 1], by = {};
+  for (const r of data.results) (by[r.task] ||= {})[r.model] = r;
+  return Object.keys(by).sort().map(task => {
+    const m = by[task], b = m[base] || {}, rec = { task, base, n: b.n || 0, baseRate: b.rate || 0, baseCost: b.mean_cost_usd || 0, model: base, verdict: "keep", saving: 0, cost: b.mean_cost_usd || 0, cells: m };
+    for (const id of order) {
+      if (id === base) break;
+      const r = m[id]; if (!r || !r.n) continue;
+      if (r.lower >= bar) { rec.model = id; rec.verdict = "use"; rec.cost = r.mean_cost_usd; break; }
+      if (r.rate >= bar && rec.verdict === "keep") rec.verdict = "more";
+    }
+    if (rec.verdict === "use" && rec.baseCost > 0) rec.saving = (rec.baseCost - rec.cost) / rec.baseCost;
+    return rec;
+  });
+}
+const label = (d, id) => (d.models.find(m => m.id === id) || { label: id }).label;
+
+function renderSteps() { $("steps").innerHTML = NAMES.map((n, i) => `<span class="step ${i === S.step ? "on" : i < S.step ? "done" : ""}">${esc(n)}</span>`).join(""); }
+function nav(back, nextDisabled) {
+  return `<div class="row">${back ? `<button onclick="go(${S.step - 1})">Back</button>` : ""}${S.step < 4 ? `<button class="primary" ${nextDisabled ? "disabled" : ""} onclick="go(${S.step + 1})">Continue</button>` : ""}</div>`;
+}
+function go(i) { S.step = i; S.msg = ""; render(); }
+
+function render() {
+  renderSteps();
+  const v = $("view");
+  if (S.step === 0) v.innerHTML = step1();
+  else if (S.step === 1) v.innerHTML = step2();
+  else if (S.step === 2) v.innerHTML = step3();
+  else if (S.step === 3) v.innerHTML = step4();
+  else v.innerHTML = step5();
+  if (S.step === 1) { const sl = $("bar"); if (sl) sl.oninput = e => { S.bar = e.target.value / 1000; $("barv").textContent = pct(S.bar); $("tbl").innerHTML = table(); }; }
+  if (S.step === 2) { $("vol").oninput = e => { S.volume = Math.max(0, +e.target.value || 0); $("out3").innerHTML = volumeOut(); }; }
+}
+
+// ---- step 1 ----
+function step1() {
+  const live = (S.cfg ? S.cfg.providers : []);
+  const opt = (id, title, sub) => `<label class="opt ${S.provider === id ? "sel" : ""}"><input type="radio" name="p" ${S.provider === id ? "checked" : ""} onchange="S.provider='${esc(id)}';render()"> <b>${esc(title)}</b><div class="sub">${esc(sub)}</div></label>`;
+  const cur = live.find(p => p.id === S.provider);
+  return `<div class="card"><h2>Provider &amp; key</h2><p class="sub">The same workload, prompts and scoring run on every tier of the provider you pick.</p>
+    ${opt("sample", "Recorded sample (no key)", S.sample ? "A real run on local models, recorded earlier. Prices are placeholders." : "Loading…")}
+    ${live.map(p => opt(p.id, p.label, p.tiers.map(t => t.label + ": " + t.id).join(" · ") + (p.key_required ? "" : " · no key needed"))).join("")}
+    ${cur && cur.key_required ? `<div class="priv"><input type="password" id="key" autocomplete="off" placeholder="your API key" value="" oninput="S.key=this.value"> Your key stays in this tab and is sent only to run this workload. It is never stored or logged. Use a scoped, revocable key.</div>` : ""}
+    ${cur ? `<div class="row"><label class="sub">Examples per task type <select id="pt" onchange="S.perTask=+this.value">${[5, 10, 15, 25].map(n => `<option ${S.perTask === n ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+      <button class="primary" id="runbtn" ${S.busy ? "disabled" : ""} onclick="runLive()">${S.busy ? "Running…" : "Run live"}</button>
+      <span class="sub">Hard cap: ${usd(S.cfg.session_cap_usd)} per run</span></div>` : ""}
+    <p class="sub" id="msg">${esc(S.msg)}</p></div>${nav(false, !S.data)}`;
+}
+async function runLive() {
+  S.busy = true; S.msg = "Running every example on every tier. This can take a minute…"; render();
+  try {
+    const r = await fetch("/v1/demo/live", { method: "POST", headers: hdr(), body: JSON.stringify({ provider: S.provider, key: S.key, per_task: S.perTask }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error((j.error && j.error.message) || "run failed");
+    S.data = j; S.source = "live"; S.msg = `Done. Spent ${usd(j.spent)} of ${usd(j.cap)}.` + (j.capped ? " The spend cap stopped the run early." : "") + (j.first_error ? " Provider said: " + j.first_error : "");
+  } catch (e) { S.msg = "Error: " + e.message; }
+  S.busy = false; render();
+}
+
+// ---- step 2 ----
+function table() {
+  const d = S.data, recs = decide(d, S.bar), ids = d.models.map(m => m.id);
+  const head = `<tr><th>Task</th>${d.models.map(m => `<th>${esc(m.label)}<br>${esc(m.id)}</th>`).join("")}<th>Decision</th><th>Saving</th></tr>`;
+  const rows = recs.map(r => `<tr><td>${esc(r.task)} <span class="sub">n=${r.n}</span></td>${ids.map(id => {
+    const c = r.cells[id]; if (!c) return "<td>-</td>";
+    const ok = c.lower >= S.bar, pick = id === r.model && r.verdict === "use";
+    return `<td class="${pick ? "pick" : ""}">${pct(c.rate)} <span class="sub">(${pct(c.lower)})</span><br><span class="${ok ? "pass" : "fail"}">${ok ? "PASS" : "FAIL"}</span> <span class="sub">${usd(c.mean_cost_usd)}</span></td>`;
+  }).join("")}<td><span class="tag ${r.verdict === "use" ? "ok" : r.verdict === "more" ? "more" : "keep"}">${r.verdict === "use" ? "use " + esc(label(d, r.model)) : r.verdict === "more" ? "need more examples" : "keep premium"}</span></td><td>${r.verdict === "use" ? Math.round(r.saving * 100) + "%" : "-"}</td></tr>`).join("");
+  return head + rows;
+}
+function errNote() {
+  const by = {}; for (const r of S.data.results) if (r.errors) by[r.model] = (by[r.model] || 0) + r.errors;
+  const parts = Object.entries(by).map(([m, n]) => m + ": " + n);
+  return parts.length ? "Provider errors (retried once, reported apart from quality): " + parts.join(", ") + "." : "";
+}
+function step2() {
+  if (!S.data) return `<div class="card">Run or choose a sample first.</div>${nav(true, true)}`;
+  return `<div class="card"><h2>Quality</h2><p class="sub">Required pass rate. A model qualifies only when the 95% lower bound on its measured pass rate (in brackets) reaches the bar. Drag the bar and watch the decision change.</p>
+    <div class="row"><input type="range" id="bar" min="800" max="999" value="${Math.round(S.bar * 1000)}" style="width:60%"><b class="big" id="barv" style="font-size:24px">${pct(S.bar)}</b></div>
+    <div style="overflow:auto;margin-top:10px"><table id="tbl">${table()}</table></div>
+    ${S.data.models.length ? "" : ""}<p class="sub">${S.source === "sample" ? "Recorded sample: local models, placeholder prices." : "Live run: measured on your key."} Small samples cannot prove high bars; that is the point. ${errNote()}</p></div>${nav(true, false)}`;
+}
+
+// ---- step 3 ----
+function volumeOut() {
+  const d = S.data, recs = decide(d, S.bar), tot = recs.reduce((a, r) => a + r.n, 0) || 1;
+  let today = 0, with_ = 0;
+  for (const r of recs) { const share = r.n / tot; today += share * r.baseCost; with_ += share * r.cost; }
+  const t = today * S.volume, w = with_ * S.volume;
+  return `<div class="grid"><div class="tile"><div class="sub">Today (every task on ${esc(label(d, d.models[d.models.length - 1].id))})</div><div class="big">${money(t)}</div><div class="sub">per month</div></div>
+    <div class="tile"><div class="sub">With the proven models</div><div class="big">${money(w)}</div><div class="sub">per month</div></div>
+    <div class="tile"><div class="sub">Estimated saving</div><div class="big" style="color:var(--brand)">${money(t - w)}</div><div class="sub">${t > 0 ? Math.round((t - w) / t * 100) : 0}% at ${pct(S.bar)} quality</div></div></div>`;
+}
+function step3() {
+  if (!S.data) return `<div class="card">Run or choose a sample first.</div>${nav(true, true)}`;
+  return `<div class="card"><h2>Volume</h2><p class="sub">How many AI tasks does your team run per month? The mix of task types is the one measured in the run.</p>
+    <div class="row"><label class="sub">Tasks per month <input type="number" id="vol" min="0" value="${S.volume}" style="width:180px"></label></div>
+    <div id="out3" style="margin-top:12px">${volumeOut()}</div>
+    <p class="sub">${S.source === "sample" ? "Sample prices are placeholders for local models, so read these as relative." : "Computed from measured token usage at the listed prices."}</p></div>${nav(true, false)}`;
+}
+
+// ---- step 4 ----
+function step4() {
+  return `<div class="card"><h2>Day to day</h2><p class="sub">The same decision, one prompt at a time. Paste a prompt: the gateway places it by its content, then shows which model may answer it. A prompt it cannot place with confidence is held on the premium model.</p>
+    <textarea id="prompt" rows="3" placeholder="e.g. Classify this support ticket: I was charged twice this month"></textarea>
+    <div class="row"><button class="primary" onclick="classify()">Place this prompt</button></div><div id="cls" style="margin-top:12px"></div></div>${nav(true, false)}`;
+}
+async function classify() {
+  const p = $("prompt").value.trim(); if (!p) return;
+  const el = $("cls"); el.textContent = "…";
+  try {
+    const r = await fetch("/v1/demo/classify", { method: "POST", headers: hdr(), body: JSON.stringify({ prompt: p }) }); const j = await r.json();
+    if (!r.ok) throw new Error((j.error && j.error.message) || "failed");
+    el.innerHTML = `<div class="grid"><div class="tile"><div class="sub">Task type (${esc(j.method)})</div><div class="big" style="font-size:24px">${esc(j.task)}</div></div>
+      <div class="tile"><div class="sub">Model that may answer it</div><div class="big" style="font-size:24px">${esc(j.model)}</div></div></div>
+      <p class="sub">${j.task === "unclassified" ? "Not placed with confidence, so it is held on the premium model rather than routed on a guess." : j.proven ? "Proven to clear the " + pct(j.bar) + " bar for this task type." : "No model is proven for this task type yet, so the premium model answers until an assessment proves a cheaper one."}</p>`;
+  } catch (e) { el.textContent = "Error: " + e.message; }
+}
+
+// ---- step 5 ----
+function step5() {
+  if (!S.data) return `<div class="card">Run or choose a sample first.</div>${nav(true, true)}`;
+  const recs = decide(S.data, S.bar), moved = recs.filter(r => r.verdict === "use"), kept = recs.length - moved.length;
+  return `<div class="card"><h2>What happens next</h2>
+    <p>At a <b>${pct(S.bar)}</b> quality bar, <b>${moved.length}</b> of <b>${recs.length}</b> workloads have a cheaper model proven good enough. <b>${kept}</b> stay on the premium model, because nothing cheaper is proven for them.</p>
+    <ol><li>Assess your own labelled examples: <code>lagom assess -data examples.jsonl -bar ${S.bar} -learn</code></li>
+    <li>Go live by changing one line, the base URL. The endpoint speaks the OpenAI and Anthropic wire formats:</li></ol>
+    <pre>client = Anthropic(base_url="https://your-gateway")   # or OpenAI(base_url="https://your-gateway/v1")</pre>
+    <p class="sub">Only proven models answer unchecked traffic. Prompts it cannot place go to the premium model. Every request is recorded with its cost and what it would have cost on your current model.</p>
+    <p class="warn">Pricing is set by the operator and is not defined in this pilot. Savings shown are estimates from ${S.source === "sample" ? "a small recorded sample on local models" : "this run"}.</p></div>${nav(true, true)}`;
+}
+
+(async function init() {
+  try { S.cfg = await (await fetch("/v1/demo/config", { headers: hdr() })).json(); } catch (e) { S.cfg = { providers: [], session_cap_usd: 0.5 }; }
+  try { const s = await (await fetch("/v1/demo/sample", { headers: hdr() })).json(); if (s.results && s.results.length) { S.sample = s; S.data = s; } } catch (e) {}
+  render();
+})();
+</script>
+</body>
+</html>
